@@ -1,116 +1,111 @@
-const BINANCE_QUOTES = ["USDT", "USDC", "FDUSD", "BTC", "ETH", "BNB"];
+import { SOURCE_SYMBOL_MAP } from "../catalog/confirmed-symbols.js";
 
-function splitBinanceSymbol(symbol) {
-  const quote = BINANCE_QUOTES.find((q) => symbol.endsWith(q));
+// markPrice / indexPrice 는 없거나 0·빈 문자열이면 null
+function optionalPrice(value) {
+  if (value == null || value === "") return null;
 
-  if (!quote) {
-    return null;
-  }
+  const number = Number(value);
 
-  return {
-    asset: symbol.slice(0, -quote.length),
-    quote,
-  };
+  return Number.isFinite(number) && number > 0 ? number : null;
 }
 
-function splitBiquoteSymbol(symbol) {
-  const quotes = [
-    "USDT",
-    "USDC",
-    "USD",
-    "EUR",
-    "GBP",
-    "JPY",
-    "AUD",
-    "CAD",
-    "CHF",
-  ];
+// 거래소 전체 응답에서 확정 종목만 골라 공통 심볼(symbol)로 정규화
+function selectConfirmed(source, items, getSourceSymbol, toFields) {
+  const symbols = SOURCE_SYMBOL_MAP[source];
+  const fetchedAt = Date.now();
+  const prices = [];
 
-  const quote = quotes.find((q) => symbol.endsWith(q));
+  for (const item of items) {
+    const sourceSymbol = getSourceSymbol(item);
+    const symbol = symbols.get(sourceSymbol);
 
-  if (!quote) {
-    return {
-      asset: symbol,
-      quote: null,
-    };
+    if (!symbol) continue;
+
+    prices.push({
+      source,
+      symbol,
+      sourceSymbol,
+      price: null,
+      markPrice: null,
+      indexPrice: null,
+      sourceTimestamp: null,
+      fetchedAt,
+      ...toFields(item),
+    });
   }
 
-  return {
-    asset: symbol.slice(0, -quote.length),
-    quote,
-  };
+  return prices;
 }
 
 export function normalizeBinancePrices(data) {
-  const fetchedAt = Date.now();
+  return selectConfirmed(
+    "BINANCE",
+    data,
+    (item) => item.symbol,
+    (item) => ({ price: Number(item.price) }),
+  );
+}
 
-  return data
-    .map((item) => {
-      const pair = splitBinanceSymbol(item.symbol);
+// tickers(v2/ticker/price) 의 price 에 premiumIndex 의 markPrice/indexPrice 를 합침
+export function normalizeBinanceFuturesPrices({ tickers, premiumIndex }) {
+  const premiumBySymbol = new Map(premiumIndex.map((p) => [p.symbol, p]));
 
-      if (!pair) {
-        return null;
-      }
+  return selectConfirmed(
+    "BINANCE_FUTURES",
+    tickers,
+    (item) => item.symbol,
+    (item) => {
+      const premium = premiumBySymbol.get(item.symbol);
 
       return {
-        source: "BINANCE",
-        asset: pair.asset,
-        quote: pair.quote,
-        symbol: item.symbol,
         price: Number(item.price),
-        sourceTimestamp: null,
-        fetchedAt,
+        markPrice: optionalPrice(premium?.markPrice),
+        indexPrice: optionalPrice(premium?.indexPrice),
+        sourceTimestamp: item.time ?? null,
       };
-    })
-    .filter(Boolean);
+    },
+  );
 }
 
 export function normalizeGatePrices(data) {
-  const fetchedAt = Date.now();
+  return selectConfirmed(
+    "GATE",
+    data,
+    (item) => item.currency_pair,
+    (item) => ({ price: Number(item.last) }),
+  );
+}
 
-  return data.map((item) => {
-    const [asset, quote] = item.currency_pair.split("_");
-    const symbol = `${asset}${quote}`;
-
-    return {
-      source: "GATE",
-      asset,
-      quote,
-      symbol: symbol,
+export function normalizeGateFuturesPrices(data) {
+  return selectConfirmed(
+    "GATE_FUTURES",
+    data,
+    (item) => item.contract,
+    (item) => ({
       price: Number(item.last),
-      sourceTimestamp: null,
-      fetchedAt,
-    };
-  });
+      markPrice: optionalPrice(item.mark_price),
+      indexPrice: optionalPrice(item.index_price),
+    }),
+  );
 }
 
 export function normalizeBiquotePrices(data) {
-  const fetchedAt = Date.now();
-
-  return data.map((item) => {
-    const pair = splitBiquoteSymbol(item.symbol);
-
-    return {
-      source: "BIQUOTE",
-
-      asset: pair.asset,
-      quote: pair.quote,
-
-      symbol: item.symbol,
-
+  return selectConfirmed(
+    "BIQUOTE",
+    data,
+    (item) => item.symbol,
+    (item) => ({
       // Biquote에서는 mid를 대표가격으로 사용
       price: Number(item.mid),
 
       sourceTimestamp: item.lastQuoteAt ?? item.timestamp ?? null,
 
-      fetchedAt,
-
       // 유효성 확인용 추가 데이터
       stale: item.stale,
       quoteAgeSeconds: item.quoteAgeSeconds,
       marketState: item.marketState,
-    };
-  });
+    }),
+  );
 }
 
 // export function normalizeCmcPrices(body) {

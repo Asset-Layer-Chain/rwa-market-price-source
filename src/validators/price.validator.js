@@ -1,5 +1,10 @@
-// const VALID_SOURCES = new Set(["BINANCE", "GATE", "CMC"]);
-const VALID_SOURCES = new Set(["BINANCE", "GATE", "CMC", "BIQUOTE"]);
+import { SOURCES } from "../catalog/confirmed-symbols.js";
+
+const VALID_SOURCES = new Set(SOURCES);
+
+function isOptionalPrice(value) {
+  return value === null || (Number.isFinite(value) && value > 0);
+}
 
 export function isValidPrice(item) {
   if (!item) return false;
@@ -8,15 +13,15 @@ export function isValidPrice(item) {
     return false;
   }
 
-  if (typeof item.asset !== "string" || item.asset.length === 0) {
-    return false;
-  }
-
-  if (typeof item.quote !== "string" || item.quote.length === 0) {
+  if (typeof item.symbol !== "string" || item.symbol.length === 0) {
     return false;
   }
 
   if (!Number.isFinite(item.price) || item.price <= 0) {
+    return false;
+  }
+
+  if (!isOptionalPrice(item.markPrice) || !isOptionalPrice(item.indexPrice)) {
     return false;
   }
 

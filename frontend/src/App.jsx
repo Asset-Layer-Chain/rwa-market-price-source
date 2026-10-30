@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import ConfirmedPricesTable from "./ConfirmedPricesTable.jsx";
 
 const SOURCES = [
-  { id: "BINANCE", label: "Binance", short: "BN", accent: "binance" },
-  { id: "GATE", label: "Gate.io", short: "GT", accent: "gate" },
+  { id: "BINANCE", label: "Binance Spot", short: "BN", accent: "binance" },
+  { id: "BINANCE_FUTURES", label: "Binance Futures", short: "BF", accent: "binance" },
   { id: "BIQUOTE", label: "Biquote", short: "BQ", accent: "biquote" },
+  { id: "GATE", label: "Gate.io Spot", short: "GT", accent: "gate" },
+  { id: "GATE_FUTURES", label: "Gate.io Futures", short: "GF", accent: "gate" },
 ];
 const POLL_INTERVAL_MS = 1000;
 
@@ -18,7 +21,7 @@ function formatPrice(value) {
 
 function PricePanel({ source, prices, filter }) {
   const filtered = prices.filter((item) =>
-    `${item.symbol} ${item.asset || ""} ${item.quote || ""}`
+    `${item.symbol} ${item.sourceSymbol || ""}`
       .toLowerCase()
       .includes(filter.toLowerCase()),
   );
@@ -50,7 +53,7 @@ function PricePanel({ source, prices, filter }) {
               className="price-row"
               role="listitem"
               key={`${source.id}-${item.symbol}`}
-              title={`${item.symbol} / ${item.quote || "-"}`}
+              title={`${item.symbol} / ${item.sourceSymbol || "-"}`}
             >
               <span className="symbol" title={item.symbol}>
                 {item.symbol}
@@ -69,7 +72,7 @@ function PricePanel({ source, prices, filter }) {
 export default function App() {
   const [prices, setPrices] = useState([]);
   const [filter, setFilter] = useState("");
-  const [enabledBiquote, setEnabledBiquote] = useState(null);
+  const [view, setView] = useState("confirmed");
   const [lastChecked, setLastChecked] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -113,61 +116,12 @@ export default function App() {
     };
   }, [fetchPrices]);
 
-  useEffect(() => {
-    let active = true;
-
-    const events = new EventSource("/api/markets/events");
-
-    async function loadMarkets() {
-      try {
-        const response = await fetch("/api/markets", {
-          cache: "no-store",
-        });
-
-        if (!response.ok) throw new Error("종목 조회 실패");
-
-        const markets = await response.json();
-
-        if (active) {
-          setEnabledBiquote(
-            new Set(
-              markets
-                .filter((item) => item.enabled === true)
-                .map((item) => item.symbol.toUpperCase()),
-            ),
-          );
-        }
-      } catch (error) {
-        console.error("[BIQUOTE] 종목 갱신 실패:", error);
-      }
-    }
-
-    // 최초 조회
-    loadMarkets();
-
-    // SSE 최초 연결 및 재연결
-    events.onopen = loadMarkets;
-
-    // 종목이 변경되면 자동 갱신
-    events.addEventListener("markets-changed", () => {
-      console.log("[SSE] Biquote 종목 변경 감지");
-      loadMarkets();
-    });
-
-    return () => {
-      active = false;
-      events.close();
-    };
-  }, []);
-
   const grouped = Object.fromEntries(SOURCES.map(({ id }) => [id, []]));
   for (const item of prices) {
     if (!item || typeof item !== "object") continue;
     const source = String(item.source || "").toUpperCase();
-    const symbol = String(item.symbol || item.asset || "").toUpperCase();
+    const symbol = String(item.symbol || "").toUpperCase();
     if (!grouped[source] || !symbol) continue;
-    if (source === "BIQUOTE" && enabledBiquote && !enabledBiquote.has(symbol))
-      continue;
     grouped[source].push({ ...item, symbol });
   }
   for (const items of Object.values(grouped)) {
@@ -208,21 +162,41 @@ export default function App() {
           id="filter"
           value={filter}
           onChange={(event) => setFilter(event.target.value)}
-          placeholder="BTCUSDT, XAUUSD ..."
+          placeholder="BTC, XAU, NVDAG_USDT ..."
           autoComplete="off"
         />
         <span className="refresh-hint">1초 간격으로 서버의 최신 가격 확인</span>
       </div>
-      <div className="panels">
-        {SOURCES.map((source) => (
-          <PricePanel
-            key={source.id}
-            source={source}
-            prices={grouped[source.id]}
-            filter={filter}
-          />
-        ))}
+      <div className="view-switch">
+        <button
+          type="button"
+          className={view === "confirmed" ? "active" : ""}
+          onClick={() => setView("confirmed")}
+        >
+          확정 31개 종목 비교
+        </button>
+        <button
+          type="button"
+          className={view === "all" ? "active" : ""}
+          onClick={() => setView("all")}
+        >
+          기존 전체 시세
+        </button>
       </div>
+      {view === "confirmed" ? (
+        <ConfirmedPricesTable filter={filter} />
+      ) : (
+        <div className="panels">
+          {SOURCES.map((source) => (
+            <PricePanel
+              key={source.id}
+              source={source}
+              prices={grouped[source.id]}
+              filter={filter}
+            />
+          ))}
+        </div>
+      )}
       <p className="footnote">
         가격은 백엔드 <code>/prices</code> 응답 기준입니다. 백엔드의 실제 수집
         주기(현재 설정 5초)에 따라 값이 갱신됩니다.

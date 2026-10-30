@@ -1,3 +1,5 @@
+import { createHttpError } from "./http-error.js";
+
 const BINANCE_URL = "https://api.binance.com/api/v3/ticker/price";
 
 export async function fetchBinancePrices() {
@@ -6,7 +8,7 @@ export async function fetchBinancePrices() {
   });
 
   if (!response.ok) {
-    throw new Error(`BINANCE_API_ERROR status=${response.status}`);
+    throw createHttpError("BINANCE_API_ERROR", response);
   }
 
   const data = await response.json();

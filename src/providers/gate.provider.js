@@ -1,3 +1,5 @@
+import { createHttpError } from "./http-error.js";
+
 const GATE_URL = "https://api.gateio.ws/api/v4/spot/tickers";
 
 export async function fetchGatePrices() {
@@ -9,7 +11,7 @@ export async function fetchGatePrices() {
   });
 
   if (!response.ok) {
-    throw new Error(`GATE_API_ERROR status=${response.status}`);
+    throw createHttpError("GATE_API_ERROR", response);
   }
 
   const data = await response.json();

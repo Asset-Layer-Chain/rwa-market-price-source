@@ -4,6 +4,10 @@ import "dotenv/config";
 import express from "express";
 import { pool } from "./db.js";
 import { marketDataService } from "./services/market-data.service.js";
+import {
+  buildConfirmedSnapshot,
+  confirmedSnapshotCsv,
+} from "./catalog/confirmed-prices.js";
 
 const app = express();
 const port = Number(process.env.PORT) || 3002;
@@ -57,10 +61,10 @@ app.get("/prices", (req, res) => {
   });
 });
 
-app.get("/prices/quote/:quote", (req, res) => {
+// 공통 심볼별로 거래소 가격을 모아서 반환
+app.get("/prices/grouped", (req, res) => {
   res.json({
-    quote: req.params.quote.toUpperCase(),
-    data: marketDataService.getPricesByQuote(req.params.quote),
+    data: marketDataService.getGroupedPrices(),
   });
 });
 
@@ -71,11 +75,34 @@ app.get("/prices/source/:source", (req, res) => {
   });
 });
 
-app.get("/prices/:asset", (req, res) => {
+app.get("/prices/:symbol", (req, res) => {
   res.json({
-    asset: req.params.asset.toUpperCase(),
-    data: marketDataService.getPricesByAsset(req.params.asset),
+    symbol: req.params.symbol.toUpperCase(),
+    data: marketDataService.getPricesBySymbol(req.params.symbol),
   });
+});
+
+// ===========================
+// Read-only snapshot of the 31 project-confirmed instruments.
+// Accesses the existing in-memory prices; no extra API polling and no DB writes.
+// ===========================
+function getConfirmedSnapshot() {
+  return buildConfirmedSnapshot(marketDataService.getAllPrices());
+}
+
+app.get("/api/confirmed-prices", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json(getConfirmedSnapshot());
+});
+
+app.get("/api/confirmed-prices.csv", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader(
+    "Content-Disposition",
+    'attachment; filename="confirmed-prices.csv"',
+  );
+  res.send(confirmedSnapshotCsv(getConfirmedSnapshot()));
 });
 
 // ===========================
@@ -197,52 +224,3 @@ app.listen(port, () => {
 
   marketDataService.start();
 });
-
-// import "dotenv/config";
-// import express from "express";
-// import { marketDataService } from "./services/market-data.service.js";
-
-// const app = express();
-
-// app.use(express.json());
-
-// const port = Number(process.env.PORT) || 3002;
-
-// app.get("/health", (req, res) => {
-//   res.json({
-//     status: "OK",
-//   });
-// });
-
-// app.get("/prices", (req, res) => {
-//   res.json({
-//     data: marketDataService.getAllPrices(),
-//   });
-// });
-
-// app.get("/prices/:asset", (req, res) => {
-//   res.json({
-//     asset: req.params.asset.toUpperCase(),
-//     data: marketDataService.getPricesByAsset(req.params.asset),
-//   });
-// });
-
-// app.get("/prices/quote/:quote", (req, res) => {
-//   res.json({
-//     quote: req.params.quote.toUpperCase(),
-//     data: marketDataService.getPricesByQuote(req.params.quote),
-//   });
-// });
-
-// app.get("/prices/source/:source", (req, res) => {
-//   res.json({
-//     source: req.params.source.toUpperCase(),
-//     data: marketDataService.getPricesBySource(req.params.source),
-//   });
-// });
-
-// app.listen(port, () => {
-//   console.log(`Market Data Server running on http://localhost:${port}`);
-
-//   marketDataService.start();
-// });

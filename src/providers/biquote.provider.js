@@ -1,4 +1,5 @@
-import { getBiquoteSymbols } from "../repository/biquoteSymbolRepository.js";
+import { createHttpError } from "./http-error.js";
+import { sourceSymbols } from "../catalog/confirmed-symbols.js";
 
 const BASE_URL = "https://biquote.io/api";
 
@@ -28,8 +29,9 @@ const BASE_URL = "https://biquote.io/api";
 //   return rows.map((row) => row.symbol);
 // }
 
+// 개별 조회 불가 → 확정 종목 심볼을 전부 쿼리에 넣어 1회 요청
 export async function fetchBiquotePrices() {
-  const symbols = await getBiquoteSymbols();
+  const symbols = sourceSymbols("BIQUOTE");
 
   if (symbols.length === 0) {
     return [];
@@ -50,7 +52,7 @@ export async function fetchBiquotePrices() {
   if (!response.ok) {
     const body = await response.text();
 
-    throw new Error(`BIQUOTE_API_ERROR status=${response.status} body=${body}`);
+    throw createHttpError("BIQUOTE_API_ERROR", response, body);
   }
 
   const data = await response.json();
