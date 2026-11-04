@@ -15,6 +15,7 @@ import {
 } from "../normalizers/price.normalizer.js";
 
 import { filterValidPrices } from "../validators/price.validator.js";
+import { toPublicPrice } from "../formatters/price.formatter.js";
 import {
   SOURCES,
   SOURCE_SYMBOL_MAP,
@@ -191,7 +192,8 @@ class MarketDataService {
     );
   }
 
-  // 공통 심볼별로 거래소 가격을 모음. 수집 대상 거래소만 포함, 아직 미수신이면 null
+  // 공통 심볼별로 거래소 가격을 모음 (외부 출력 형태).
+  // 수집 대상 거래소만 포함, 아직 미수신이면 null
   getGroupedPrices() {
     return confirmedSymbols.map((item) => ({
       symbol: item.symbol,
@@ -200,7 +202,9 @@ class MarketDataService {
       prices: Object.fromEntries(
         SOURCES.filter((source) => item.sources[source]).map((source) => [
           source,
-          this.prices.get(`${source}:${item.symbol}`) ?? null,
+          this.prices.has(`${source}:${item.symbol}`)
+            ? toPublicPrice(this.prices.get(`${source}:${item.symbol}`))
+            : null,
         ]),
       ),
     }));

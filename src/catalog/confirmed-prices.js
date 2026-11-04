@@ -1,4 +1,5 @@
 import { SOURCES, confirmedSymbols } from "./confirmed-symbols.js";
+import { formatKst } from "../formatters/price.formatter.js";
 
 export const DEFAULT_FRESHNESS_MS = 30000;
 
@@ -41,20 +42,12 @@ function rowFor(source, item, lookup, now, freshnessMs) {
   if (!sourceSymbol) {
     status = "NOT_COLLECTED";
   } else if (record && Number.isFinite(record.price) && record.price > 0) {
+    // sourceTimestamp 신선도는 수집 시 validator 가 이미 걸렀으므로
+    // 여기서는 마지막 수집 시각만 본다.
     const cacheFresh =
       now - Number(record.fetchedAt) <= freshnessMs &&
       now >= Number(record.fetchedAt) - 5000;
-    // Futures ticker.time is the trade timestamp; a fresh REST fetch can still
-    // return an old last trade during market close.
-    const tradeTime =
-      typeof record.sourceTimestamp === "number"
-        ? record.sourceTimestamp
-        : null;
-    const lastTradeFresh =
-      source !== "BINANCE_FUTURES" ||
-      tradeTime == null ||
-      (now - tradeTime <= freshnessMs && now >= tradeTime - 5000);
-    status = cacheFresh && lastTradeFresh ? "PRICE_OK" : "STALE_CACHE";
+    status = cacheFresh ? "PRICE_OK" : "STALE_CACHE";
   } else {
     status = "NO_PRICE_IN_CACHE";
   }
@@ -140,11 +133,6 @@ export function confirmedSnapshotCsv(snapshot) {
   for (const item of snapshot.data) {
     for (const source of SOURCES) {
       const p = item.exchanges[source];
-      const fetched = p.fetchedAt
-        ? new Date(p.fetchedAt).toLocaleString("sv-SE", {
-            timeZone: "Asia/Seoul",
-          })
-        : "";
       lines.push(
         [
           item.category,
@@ -159,7 +147,7 @@ export function confirmedSnapshotCsv(snapshot) {
           p.markPrice,
           p.indexPrice,
           p.quote,
-          fetched,
+          formatKst(p.fetchedAt),
           p.note,
         ]
           .map(escape)

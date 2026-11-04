@@ -9,6 +9,16 @@ function optionalPrice(value) {
   return Number.isFinite(number) && number > 0 ? number : null;
 }
 
+// 시각은 내부적으로 epoch ms 로 통일 (Biquote 는 ISO 문자열로 내려옴)
+function toEpochMs(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string" || value === "") return null;
+
+  const ms = Date.parse(value);
+
+  return Number.isNaN(ms) ? null : ms;
+}
+
 // 거래소 전체 응답에서 확정 종목만 골라 공통 심볼(symbol)로 정규화
 function selectConfirmed(source, items, getSourceSymbol, toFields) {
   const symbols = SOURCE_SYMBOL_MAP[source];
@@ -61,7 +71,7 @@ export function normalizeBinanceFuturesPrices({ tickers, premiumIndex }) {
         price: Number(item.price),
         markPrice: optionalPrice(premium?.markPrice),
         indexPrice: optionalPrice(premium?.indexPrice),
-        sourceTimestamp: item.time ?? null,
+        sourceTimestamp: toEpochMs(item.time),
       };
     },
   );
@@ -98,9 +108,9 @@ export function normalizeBiquotePrices(data) {
       // Biquote에서는 mid를 대표가격으로 사용
       price: Number(item.mid),
 
-      sourceTimestamp: item.lastQuoteAt ?? item.timestamp ?? null,
+      sourceTimestamp: toEpochMs(item.lastQuoteAt ?? item.timestamp),
 
-      // 유효성 확인용 추가 데이터
+      // 유효성 확인용 추가 데이터 (외부 출력에서는 제외)
       stale: item.stale,
       quoteAgeSeconds: item.quoteAgeSeconds,
       marketState: item.marketState,

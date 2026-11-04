@@ -4,6 +4,7 @@ import "dotenv/config";
 import express from "express";
 import { pool } from "./db.js";
 import { marketDataService } from "./services/market-data.service.js";
+import { toPublicPrice } from "./formatters/price.formatter.js";
 import {
   buildConfirmedSnapshot,
   confirmedSnapshotCsv,
@@ -57,7 +58,7 @@ app.get("/health", (req, res) => {
 
 app.get("/prices", (req, res) => {
   res.json({
-    data: marketDataService.getAllPrices(),
+    data: marketDataService.getAllPrices().map(toPublicPrice),
   });
 });
 
@@ -71,14 +72,18 @@ app.get("/prices/grouped", (req, res) => {
 app.get("/prices/source/:source", (req, res) => {
   res.json({
     source: req.params.source.toUpperCase(),
-    data: marketDataService.getPricesBySource(req.params.source),
+    data: marketDataService
+      .getPricesBySource(req.params.source)
+      .map(toPublicPrice),
   });
 });
 
 app.get("/prices/:symbol", (req, res) => {
   res.json({
     symbol: req.params.symbol.toUpperCase(),
-    data: marketDataService.getPricesBySymbol(req.params.symbol),
+    data: marketDataService
+      .getPricesBySymbol(req.params.symbol)
+      .map(toPublicPrice),
   });
 });
 
