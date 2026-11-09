@@ -274,3 +274,16 @@ curl -X PATCH http://localhost:3002/api/markets/XAUUSD -H 'Content-Type: applica
 - `.env`(API 키, DB 비밀번호), `node_modules/`, `frontend/dist/`는 `.gitignore`로 제외됩니다.
 - 새 환경 변수를 추가하면 `.env.example`에 **키 이름만** 추가하세요.
 - `package-lock.json`은 버전을 고정하기 위해 **커밋합니다.**
+
+
+## Control read-only integration
+
+기존 `npm start`는 기존 live 서버입니다. 새 `npm run start:integrated`는 기본 offline(외부 요청/DB 접속 없음)이며 `/health` 200, 데이터 없는 `/ready`·`/oracle/v1/prices`는 503입니다.
+`SOURCE_MODE=fixture`는 명시적 `mock:true` 합성 가격을 전달합니다. `SOURCE_MODE=live`는 기존 수집기를 그대로 쓰며 24자 이상 `INTERNAL_SERVICE_TOKEN`이 필요합니다. Biquote에는 기존 DB 설정이 필요합니다.
+새 Docker는 read-only adapter만 노출하고 관리 쓰기 API를 노출하지 않습니다. 기존 서버의 추가 Oracle 조회 경로도 토큰을 요구합니다.
+`observedAt=sourceTimestamp ?? fetchedAt`; 10초 기본 허용 지연은 개발 설정이며 운영의 소스별 카탈로그 값으로 교체해야 합니다. 미래 시각·오래된 가격·휴장/stale 레코드는 제외합니다.
+종료 시 수집 타이머를 중지하며 CLI 종료 상한은 2초입니다. live provider의 진행 중 호출은 기존 provider timeout을 따르고, 상한 이후 프로세스 종료로 네트워크 자원을 닫습니다.
+
+### 021 후속 연결 보완
+
+기존 수집기의 `{symbol: 공통 심볼, sourceSymbol: 공급자 심볼}`을 읽기 전용 어댑터에서 확정 종목표와 대조합니다. 정확히 일치한 쌍만 `asset`, `quote=USDT`, 공급자 `symbol`로 전달합니다. 수집기·원시 가격·DB 스키마는 변경하지 않습니다. 불일치·통화 충돌·만료·장 마감 시세는 거절합니다. 확정 31종목의 모든 등록 공급자 심볼을 자동 검사합니다.

@@ -31,6 +31,7 @@ class MarketDataService {
   constructor() {
     this.prices = new Map();
     this.inFlight = new Set();
+    this.timers = new Set();
     // name -> { until, streak }
     this.rateLimits = new Map();
   }
@@ -101,7 +102,7 @@ class MarketDataService {
     const run = () => this.runGuarded(name, task);
 
     run();
-    setInterval(run, intervalMs);
+    this.timers.add(setInterval(run, intervalMs));
   }
 
   async collectBinance() {
@@ -216,7 +217,13 @@ class MarketDataService {
     );
   }
 
+  stop() {
+    for (const timer of this.timers) clearInterval(timer);
+    this.timers.clear();
+  }
+
   start() {
+    if (this.timers.size) return;
     const binanceInterval = Number(process.env.BINANCE_INTERVAL_MS) || 5000;
     const gateInterval = Number(process.env.GATE_INTERVAL_MS) || 5000;
     // const cmcInterval = Number(process.env.CMC_INTERVAL_MS) || 180000;

@@ -1,0 +1,10 @@
+.git
+node_modules
+dist
+dist-test
+.env*
+*.log
+nohup.out
+.DS_Store
+*.patch
+*.diff

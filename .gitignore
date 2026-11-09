@@ -47,3 +47,14 @@ Thumbs.db
 # 로컬 Claude Code 설정
 # ===========================
 .claude/settings.local.json
+
+# Local integration artifacts
+.env*
+!.env.example
+*.patch
+*.diff
+*.rej
+*.orig
+*.log
+nohup.out
+.DS_Store

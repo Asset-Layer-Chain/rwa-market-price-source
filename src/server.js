@@ -2,6 +2,8 @@
 
 import "dotenv/config";
 import express from "express";
+import { oracleSnapshot } from "./integration/prices.mjs";
+import { timingSafeEqual } from "node:crypto";
 import { pool } from "./db.js";
 import { marketDataService } from "./services/market-data.service.js";
 import { toPublicPrice } from "./formatters/price.formatter.js";
@@ -54,6 +56,15 @@ listenMarketChanges().catch(console.error);
 
 app.get("/health", (req, res) => {
   res.json({ status: "OK" });
+});
+
+app.get("/oracle/v1/prices", (req, res) => {
+  const token=process.env.INTERNAL_SERVICE_TOKEN||'';
+  const actual=Buffer.from(req.headers.authorization||''), expected=Buffer.from(`Bearer ${token}`);
+  if(token.length<24 || actual.length!==expected.length || !timingSafeEqual(actual,expected))return res.status(401).json({error:'Internal token required (24+ characters).'});
+  const data=oracleSnapshot(marketDataService.getAllPrices());
+  res.setHeader('Cache-Control','no-store');
+  return res.status(data.data.length?200:503).json(data.data.length?data:{error:'No fresh source prices available.',...data});
 });
 
 app.get("/prices", (req, res) => {
