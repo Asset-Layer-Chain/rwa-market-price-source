@@ -11,14 +11,18 @@ const MARKETS = {
   GATE_FUTURES: "FUTURES",
 };
 
+// 주식·ETF 는 Spot 에서 토큰화 상품(bStock, Gate xStock)으로 거래됨
+const TOKENIZED_CATEGORIES = new Set(["주식", "ETF"]);
+
 function describe(source, category) {
+  const tokenized = TOKENIZED_CATEGORIES.has(category);
   switch (source) {
     case "BINANCE":
-      return category === "주식"
+      return tokenized
         ? { matchType: "BSTOCK_TOKEN", note: "기초주식과 다른 bStock 토큰 가격" }
         : { matchType: "SPOT_PAIR", note: "Spot USDT 거래쌍" };
     case "GATE":
-      return category === "주식"
+      return tokenized
         ? { matchType: "TOKENIZED_STOCK", note: "Gate 토큰화 주식 Spot 가격" }
         : { matchType: "SPOT_PAIR", note: "Spot USDT 거래쌍" };
     case "BIQUOTE":

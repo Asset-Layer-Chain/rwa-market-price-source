@@ -21,7 +21,7 @@ test('live cannot silently start without an internal token',async()=>{await asse
 test('all confirmed collector symbols receive explicit asset and quote without changing collectors',async()=>{
  const {confirmedSymbols}=await import('../src/catalog/confirmed-symbols.js');
  const now=Date.now(),records=confirmedSymbols.flatMap(item=>Object.entries(item.sources).filter(([,pair])=>pair).map(([source,sourceSymbol])=>({source,symbol:item.symbol,sourceSymbol,price:12.5,sourceTimestamp:null,fetchedAt:now})));
- const result=oracleSnapshot(records,{now});assert.equal(result.data.length,records.length);assert.equal(result.rejected,0);assert.equal(new Set(result.data.map(p=>p.asset)).size,31);
+ const result=oracleSnapshot(records,{now});assert.equal(result.data.length,records.length);assert.equal(result.rejected,0);assert.equal(new Set(result.data.map(p=>p.asset)).size,confirmedSymbols.length);
  for(const p of result.data){assert.equal(p.quote,'USDT');assert.ok(p.symbol.endsWith('USDT'));}
 });
 test('real normalizer output reaches the adapter; ambiguous/mismatched identities stay rejected',async()=>{

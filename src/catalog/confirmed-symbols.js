@@ -1,4 +1,4 @@
-// 프로젝트에서 확정한 31개 종목과 거래소별 조회 심볼 (기준: 거래소 종목 및 가중치.pdf).
+// 프로젝트에서 확정한 38개 종목과 거래소별 조회 심볼 (기준: 거래소 종목 및 가중치.pdf 31개 + Binance 전용 ETF 7개).
 // symbol = 공통 심볼. 정규화된 가격은 이 공통 심볼로 모은다.
 // sources 값이 null 이면 해당 거래소에서는 수집하지 않는다.
 export const SOURCES = Object.freeze([
@@ -10,6 +10,7 @@ export const SOURCES = Object.freeze([
 ]);
 
 const STOCK = "주식";
+const ETF = "ETF";
 const COMMODITY = "원자재";
 const CRYPTO = "암호화폐";
 
@@ -54,6 +55,14 @@ export const confirmedSymbols = Object.freeze([
   item("HIMS",   STOCK,     "힘스앤허스 헬스",         "HIMSB",      ["HIMSBUSDT",  "HIMSUSDT",     "HIMSUSDT",    null,           null]),
   item("ZM",     STOCK,     "줌 비디오 커뮤니케이션",    "ZMB",        ["ZMBUSDT",    "ZMUSDT",       "ZMUSDT",      null,           null]),
   item("JPM",    STOCK,     "제이피모건 체이스",        "JPMB",       ["JPMBUSDT",   "JPMUSDT",      "JPMUSDT",     "JPMG_USDT",    null]),
+
+  item("QQQ",    STOCK,       "나스닥 100 지수",         "QQQB",       ["QQQBUSDT",   "QQQUSDT",      null,          null,           null]),
+  item("SPY",    STOCK,       "S&P 500 지수",          "SPYB",       ["SPYBUSDT",   "SPYUSDT",      null,          null,           null]),
+  item("TQQQ",   STOCK,       "나스닥 3배 레버리지",      "TQQQB",      ["TQQQBUSDT",  "TQQQUSDT",     null,          null,           null]),
+  item("SQQQ",   STOCK,       "나스닥 3배 인버스",       "SQQQB",      ["SQQQBUSDT",  "SQQQUSDT",     null,          null,           null]),
+  item("TMF",    STOCK,       "20년물 미국채 3배 레버리지", "TMFB",       ["TMFBUSDT",   "TMFUSDT",      null,          null,           null]),
+  item("UVXY",   STOCK,       "미국 VIX지수",            "UVXYB",      ["UVXYBUSDT",  "UVXYUSDT",     null,          null,           null]),
+  item("KORU",   STOCK,       "코스피/코스닥 3배",        "KORUB",      ["KORUBUSDT",  "KORUUSDT",     null,          null,           null]),
 
   item("XAU",    COMMODITY, "금",                   "XAUUSDT",    [null,         "XAUUSDT",      "XAUUSDT",     null,           "XAU_USDT"]),
   item("XAG",    COMMODITY, "은",                   "XAGUSDT",    [null,         "XAGUSDT",      "XAGUSDT",     null,           "XAG_USDT"]),
